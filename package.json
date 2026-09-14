@@ -1,0 +1,26 @@
+{
+  "name": "securecontract-ai",
+  "version": "0.1.0",
+  "description": "A REST API that analyzes contract text for risky clauses and missing protections, using [LangChain.js](https://js.langchain.com/) and Google Gemini. This is **Phase 1 (Beginner)** of a three-part build — a working, documented, containerized API with one real Gemini integration and no testing/auth/rate limiting yet (see [Roadmap](#roadmap)).",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/edwardbudaza/securecontract-ai.git"
+  },
+  "keywords": [],
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/edwardbudaza/securecontract-ai/issues"
+  },
+  "homepage": "https://github.com/edwardbudaza/securecontract-ai#readme",
+  "dependencies": {
+    "@langchain/core": "^1.2.11",
+    "@langchain/google-genai": "^2.3.2",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "zod": "^4.6.5"
+  }
+}
