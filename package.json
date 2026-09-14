@@ -4,7 +4,9 @@
   "description": "A REST API that analyzes contract text for risky clauses and missing protections, using [LangChain.js](https://js.langchain.com/) and Google Gemini. This is **Phase 1 (Beginner)** of a three-part build — a working, documented, containerized API with one real Gemini integration and no testing/auth/rate limiting yet (see [Roadmap](#roadmap)).",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "repository": {
     "type": "git",
@@ -22,5 +24,9 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "supertest": "^7.2.2",
+    "vitest": "^5.0.0"
   }
 }
