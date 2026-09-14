@@ -2,6 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { PromptTemplate } from "@langchain/core/prompts";
+import multer from "multer";
+import pdfParse from "pdf-parse";
 
 import { config } from "../config.js";
 import { AppError } from "../errors/AppError.js";
@@ -41,6 +43,18 @@ Contract:
 {contractText}
 ---`,
 );
+
+const upload = multer({
+  storage: multer.memoryStorage(), // never write untrusted uploads to disk unless you have to
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB cap
+  fileFilter: (req, file, cb) => {
+    const allowed = ["application/pdf", "text/plain"];
+    if (!allowed.includes(file.mimetype)) {
+      return cb(new AppError(400, "Only PDF or plain text files are accepted"));
+    }
+    cb(null, true);
+  },
+});
 
 // Real chain, build from real config - used when the app runs for real.
 export function buildDefaultChain() {
@@ -82,6 +96,48 @@ export function createContractsRouter({ chain }) {
       );
     }
   });
+
+  router.post(
+    "/analyze/upload",
+    upload.single("contract"),
+    async (req, res, next) => {
+      if (!req.file) {
+        return next(new AppError(400, "No file uploaded"));
+      }
+
+      let contractText;
+      try {
+        contractText =
+          req.file.mimetype === "application/pdf"
+            ? (await pdfParse(req.file.buffer)).text
+            : req.file.buffer.toString("utf-8");
+      } catch {
+        return next(new AppError(400, "Could not read uploaded file"));
+      }
+
+      const parsed = analyzeRequestSchema.safeParse({ contractText });
+      if (!parsed.success) {
+        return next(
+          new AppError(
+            400,
+            "Invalid file content",
+            parsed.error.flatten().fieldErrors,
+          ),
+        );
+      }
+
+      try {
+        const analysis = await chain.invoke({
+          contractText: parsed.data.contractText,
+        });
+        res.status(200).json(analysis);
+      } catch (err) {
+        next(
+          new AppError(502, "Analysis service failed", { cause: err.message }),
+        );
+      }
+    },
+  );
 
   return router;
 }
