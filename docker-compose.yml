@@ -1,0 +1,11 @@
+services:
+  api:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - ./src:/usr/src/app/src
+      - /usr/src/app/node_modules
+    command: npm run dev
