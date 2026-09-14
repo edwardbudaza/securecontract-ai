@@ -17,7 +17,7 @@ const analyzeRequestSchema = z.object({
 
 const model = new ChatGoogleGenerativeAI({
   apiKey: config.gemini.apiKey,
-  model: "gemini-1.5-flash",
+  model: "gemini-3.5-flash-lite",
   temperature: 0.2, // low temperature: we want consistent, analytical output, not creativity
 });
 
