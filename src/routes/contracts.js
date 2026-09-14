@@ -45,36 +45,37 @@ Contract:
 );
 
 const upload = multer({
-  storage: multer.memoryStorage(), // never write untrusted uploads to disk unless you have to
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB cap
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
   fileFilter: (req, file, cb) => {
     const allowed = ["application/pdf", "text/plain"];
+
     if (!allowed.includes(file.mimetype)) {
       return cb(new AppError(400, "Only PDF or plain text files are accepted"));
     }
+
     cb(null, true);
   },
 });
 
-// Real chain, build from real config - used when the app runs for real.
 export function buildDefaultChain() {
   const model = new ChatGoogleGenerativeAI({
     apiKey: config.gemini.apiKey,
     model: "gemini-3.5-flash-lite",
-    temperature: 0.2, // low temperature: we want consistent, analytical output, not creativity
-  }).withStructuredOutput(analyzeResultSchema); // ask LangChain to enforce the schema, not just hope
+    temperature: 0.2,
+  }).withStructuredOutput(analyzeResultSchema);
 
   return prompt.pipe(model);
 }
-
-// The router now ACCEPTS its chain instead of building one itself.
-// In production, app.js passes buildDefaultChain(). In tests, we pass a fake.
 
 export function createContractsRouter({ chain }) {
   const router = Router();
 
   router.post("/analyze", async (req, res, next) => {
     const parsed = analyzeRequestSchema.safeParse(req.body);
+
     if (!parsed.success) {
       return next(
         new AppError(
@@ -89,10 +90,13 @@ export function createContractsRouter({ chain }) {
       const analysis = await chain.invoke({
         contractText: parsed.data.contractText,
       });
+
       res.status(200).json(analysis);
     } catch (err) {
       next(
-        new AppError(502, "Analysis service failed", { cause: err.message }),
+        new AppError(502, "Analysis service failed", {
+          cause: err.message,
+        }),
       );
     }
   });
@@ -106,6 +110,7 @@ export function createContractsRouter({ chain }) {
       }
 
       let contractText;
+
       try {
         contractText =
           req.file.mimetype === "application/pdf"
@@ -116,6 +121,7 @@ export function createContractsRouter({ chain }) {
       }
 
       const parsed = analyzeRequestSchema.safeParse({ contractText });
+
       if (!parsed.success) {
         return next(
           new AppError(
@@ -130,10 +136,13 @@ export function createContractsRouter({ chain }) {
         const analysis = await chain.invoke({
           contractText: parsed.data.contractText,
         });
+
         res.status(200).json(analysis);
       } catch (err) {
         next(
-          new AppError(502, "Analysis service failed", { cause: err.message }),
+          new AppError(502, "Analysis service failed", {
+            cause: err.message,
+          }),
         );
       }
     },
