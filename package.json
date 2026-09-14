@@ -23,6 +23,8 @@
     "@langchain/google-genai": "^2.3.2",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
