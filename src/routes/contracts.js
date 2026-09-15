@@ -48,6 +48,9 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 5 * 1024 * 1024,
+    fields: 0,
+    files: 1,
+    parts: 1,
   },
   fileFilter: (req, file, cb) => {
     const allowed = ["application/pdf", "text/plain"];
@@ -112,10 +115,20 @@ export function createContractsRouter({ chain }) {
       let contractText;
 
       try {
-        contractText =
-          req.file.mimetype === "application/pdf"
-            ? (await PDFParse(req.file.buffer)).text
-            : req.file.buffer.toString("utf-8");
+        if (req.file.mimetype === "application/pdf") {
+          const parser = new PDFParse({
+            data: req.file.buffer,
+          });
+
+          try {
+            const result = await parser.getText();
+            contractText = result.text;
+          } finally {
+            await parser.destroy();
+          }
+        } else {
+          contractText = req.file.buffer.toString("utf-8");
+        }
       } catch {
         return next(new AppError(400, "Could not read uploaded file"));
       }
