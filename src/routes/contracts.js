@@ -2,6 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { PromptTemplate } from "@langchain/core/prompts";
+import multer from "multer";
+import { PDFParse } from "pdf-parse";
 
 import { config } from "../config.js";
 import { AppError } from "../errors/AppError.js";
@@ -42,25 +44,41 @@ Contract:
 ---`,
 );
 
-// Real chain, build from real config - used when the app runs for real.
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+    fields: 0,
+    files: 1,
+    parts: 1,
+  },
+  fileFilter: (req, file, cb) => {
+    const allowed = ["application/pdf", "text/plain"];
+
+    if (!allowed.includes(file.mimetype)) {
+      return cb(new AppError(400, "Only PDF or plain text files are accepted"));
+    }
+
+    cb(null, true);
+  },
+});
+
 export function buildDefaultChain() {
   const model = new ChatGoogleGenerativeAI({
     apiKey: config.gemini.apiKey,
     model: "gemini-3.5-flash-lite",
-    temperature: 0.2, // low temperature: we want consistent, analytical output, not creativity
-  }).withStructuredOutput(analyzeResultSchema); // ask LangChain to enforce the schema, not just hope
+    temperature: 0.2,
+  }).withStructuredOutput(analyzeResultSchema);
 
   return prompt.pipe(model);
 }
-
-// The router now ACCEPTS its chain instead of building one itself.
-// In production, app.js passes buildDefaultChain(). In tests, we pass a fake.
 
 export function createContractsRouter({ chain }) {
   const router = Router();
 
   router.post("/analyze", async (req, res, next) => {
     const parsed = analyzeRequestSchema.safeParse(req.body);
+
     if (!parsed.success) {
       return next(
         new AppError(
@@ -75,13 +93,73 @@ export function createContractsRouter({ chain }) {
       const analysis = await chain.invoke({
         contractText: parsed.data.contractText,
       });
+
       res.status(200).json(analysis);
     } catch (err) {
       next(
-        new AppError(502, "Analysis service failed", { cause: err.message }),
+        new AppError(502, "Analysis service failed", {
+          cause: err.message,
+        }),
       );
     }
   });
+
+  router.post(
+    "/analyze/upload",
+    upload.single("contract"),
+    async (req, res, next) => {
+      if (!req.file) {
+        return next(new AppError(400, "No file uploaded"));
+      }
+
+      let contractText;
+
+      try {
+        if (req.file.mimetype === "application/pdf") {
+          const parser = new PDFParse({
+            data: req.file.buffer,
+          });
+
+          try {
+            const result = await parser.getText();
+            contractText = result.text;
+          } finally {
+            await parser.destroy();
+          }
+        } else {
+          contractText = req.file.buffer.toString("utf-8");
+        }
+      } catch {
+        return next(new AppError(400, "Could not read uploaded file"));
+      }
+
+      const parsed = analyzeRequestSchema.safeParse({ contractText });
+
+      if (!parsed.success) {
+        return next(
+          new AppError(
+            400,
+            "Invalid file content",
+            parsed.error.flatten().fieldErrors,
+          ),
+        );
+      }
+
+      try {
+        const analysis = await chain.invoke({
+          contractText: parsed.data.contractText,
+        });
+
+        res.status(200).json(analysis);
+      } catch (err) {
+        next(
+          new AppError(502, "Analysis service failed", {
+            cause: err.message,
+          }),
+        );
+      }
+    },
+  );
 
   return router;
 }

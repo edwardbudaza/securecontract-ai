@@ -5,14 +5,14 @@ import {
   buildDefaultChain,
 } from "./routes/contracts.js";
 import { errorHandler } from "./middleware/errorHandler.js";
-import { rateLimiter } from "./middleware/rateLimiter.js";
+import { rateLimitter } from "./middleware/rateLimitter.js";
 import { requestLogger } from "./logger.js";
 
 export function createApp({ chain = buildDefaultChain() } = {}) {
   const app = express();
 
   app.use(requestLogger);
-  app.use(rateLimiter);
+  app.use(rateLimitter);
   app.use(express.json({ limit: "1mb" }));
 
   app.get("/health", (req, res) => {
