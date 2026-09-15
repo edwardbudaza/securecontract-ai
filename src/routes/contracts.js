@@ -3,7 +3,7 @@ import { z } from "zod";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { PromptTemplate } from "@langchain/core/prompts";
 import multer from "multer";
-import pdfParse from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 
 import { config } from "../config.js";
 import { AppError } from "../errors/AppError.js";
@@ -114,7 +114,7 @@ export function createContractsRouter({ chain }) {
       try {
         contractText =
           req.file.mimetype === "application/pdf"
-            ? (await pdfParse(req.file.buffer)).text
+            ? (await PDFParse(req.file.buffer)).text
             : req.file.buffer.toString("utf-8");
       } catch {
         return next(new AppError(400, "Could not read uploaded file"));
